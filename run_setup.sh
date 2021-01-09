@@ -26,9 +26,18 @@ if [ "$(whoami)" != "root" ]; then
   exit 1
 fi
 
-echo
-echo -n "PIA username (pNNNNNNN): "
-read PIA_USER
+if [ -f 'env.sh' ]; then
+  echo "env.sh exists.  Sourcing it"
+  . env.sh
+fi
+
+if [ -z "$PIA_USER" ]; then
+  echo
+  echo -n "PIA username (pNNNNNNN): "
+  read PIA_USER
+else
+  echo "PIA_USER set to ${PIA_USER}. Using that as PIA username"
+fi
 
 if [ -z "$PIA_USER" ]; then
   echo Username is required, aborting.
@@ -37,9 +46,13 @@ fi
 echo
 export PIA_USER
 
-echo -n "PIA password: "
-read -s PIA_PASS
-echo
+if [ -z "$PIA_PASS" ]; then
+  echo -n "PIA password: "
+  read -s PIA_PASS
+  echo
+else
+  echo "PIA_PASS is already set. Using that as PIA password"
+fi
 
 if [ -z "$PIA_PASS" ]; then
   echo Password is required, aborting.
@@ -51,9 +64,13 @@ export PIA_PASS
 # This section asks for user connection preferences
 # this is hard coded for now, but will become an input
 # variable in the future.
-echo -n "Connection method ([W]ireguard/[o]penvpn): "
-read connection_method
-echo
+if [ -z "$PIA_AUTOCONNECT" ]; then
+  echo -n "Connection method ([W]ireguard/[o]penvpn): "
+  read connection_method
+  echo
+else
+  echo "PIA_AUTOCONNECT already set to '${PIA_AUTOCONNECT}'. Using that"
+fi
 
 PIA_AUTOCONNECT="wireguard"
 if echo ${connection_method:0:1} | grep -iq o; then
@@ -83,64 +100,79 @@ echo PIA_AUTOCONNECT=$PIA_AUTOCONNECT"
 "
 
 # Check for the required presence of resolvconf for setting DNS on wireguard connections.
-setDNS="yes"
-if ! command -v resolvconf &>/dev/null && [ "$PIA_AUTOCONNECT" == wireguard ]; then
-  echo The resolvconf package could not be found.
-  echo This script can not set DNS for you and you will
-  echo need to invoke DNS protection some other way.
-  echo
-  setDNS="no"
-fi
+if [ -z "$PIA_DNS" ]; then
+  setDNS="yes"
+  if ! command -v resolvconf &>/dev/null && [ "$PIA_AUTOCONNECT" == wireguard ]; then
+    echo The resolvconf package could not be found.
+    echo This script can not set DNS for you and you will
+    echo need to invoke DNS protection some other way.
+    echo
+    setDNS="no"
+  fi
 
-if [ "$setDNS" != no ]; then
-  echo Using third party DNS could allow DNS monitoring.
-  echo -n "Do you want to force PIA DNS ([Y]es/[n]o): "
-  read setDNS
-  echo
-fi
+  if [ "$setDNS" != no ]; then
+    echo Using third party DNS could allow DNS monitoring.
+    echo -n "Do you want to force PIA DNS ([Y]es/[n]o): "
+    read setDNS
+    echo
+  fi
 
-PIA_DNS="true"
-if echo ${setDNS:0:1} | grep -iq n; then
-  PIA_DNS="false"
+  PIA_DNS="true"
+  if echo ${setDNS:0:1} | grep -iq n; then
+    PIA_DNS="false"
+  fi
 fi
 export PIA_DNS
 echo PIA_DNS=$PIA_DNS"
 "
 
-echo -n "Do you want a forwarding port assigned ([N]o/[y]es): "
-read portForwarding
-echo
+if [ -z "$PIA_PF" ]; then
+  echo -n "Do you want a forwarding port assigned ([N]o/[y]es): "
+  read portForwarding
+  echo
 
-PIA_PF="false"
-if echo ${portForwarding:0:1} | grep -iq y; then
-  PIA_PF="true"
+  PIA_PF="false"
+  if echo ${portForwarding:0:1} | grep -iq y; then
+    PIA_PF="true"
+  fi
+else
+  echo "PIA_PF set to '$PIA_PF'.  Using that for port forwarding"
 fi
 export PIA_PF
 echo PIA_PF=$PIA_PF
 
-# Set this to the maximum allowed latency in seconds.
-# All servers that respond slower than this will be ignored.
-echo -n "
-With no input, the maximum allowed latency will be set to 0.05s (50ms).
-If your connection has high latency, you may need to increase this value.
-For example, you can try 0.2 for 200ms allowed latency.
-Custom latency (no input required for 50ms): "
-read customLatency
-echo
+if [ -z "$MAX_LATENCY" ]; then
+  # Set this to the maximum allowed latency in seconds.
+  # All servers that respond slower than this will be ignored.
+  echo -n "
+  With no input, the maximum allowed latency will be set to 0.05s (50ms).
+  If your connection has high latency, you may need to increase this value.
+  For example, you can try 0.2 for 200ms allowed latency.
+  Custom latency (no input required for 50ms): "
+  read customLatency
+  echo
 
-MAX_LATENCY=0.05
-if [[ $customLatency != "" ]]; then
-  MAX_LATENCY=$customLatency
+  MAX_LATENCY=0.05
+  if [[ $customLatency != "" ]]; then
+    MAX_LATENCY=$customLatency
+  fi
+else
+  echo "MAX_LATENCY set to '$MAX_LATENCY'.  Using that for max latency"
 fi
 export MAX_LATENCY
 echo "MAX_LATENCY=\"$MAX_LATENCY\"
 "
 
-echo "Having active IPv6 connections might compromise security by allowing"
-echo "split tunnel connections that run outside the VPN tunnel."
-echo -n "Do you want to disable IPv6? (Y/n): "
-read disable_IPv6
-echo
+if [ -z "$DISABLE_IPV6" ]; then
+  echo "Having active IPv6 connections might compromise security by allowing"
+  echo "split tunnel connections that run outside the VPN tunnel."
+  echo -n "Do you want to disable IPv6? (Y/n): "
+  read disable_IPv6
+  echo
+else
+  echo "DISABLE_IPV6 is set to '$DISABLE_IPV6'.  Using that"
+  disable_IPv6="$DISABLE_IPV6"
+fi
 
 if echo ${disable_IPv6:0:1} | grep -iq n; then
   echo "IPv6 settings have not been altered.
