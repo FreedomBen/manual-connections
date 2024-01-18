@@ -114,7 +114,16 @@ while true; do
     # This script will exit in 2 months, since the port will expire.
     export bind_port_response
     if [ "$(echo "$bind_port_response" | jq -r '.status')" != "OK" ]; then
-      echo "The API did not return OK when trying to bind port. Exiting."
+      echo "The API did not return OK when trying to bind port"
+      read -p "Try again? [y/n] " -n 1 -r
+      read -p "Try again? (Y/N): " TRY_AGAIN
+      if [[ $TRY_AGAIN =~ ^[Yy]$ ]]; then
+        echo "Trying again..."
+        continue
+      else
+        echo "Exiting..."
+        exit 1
+      fi
       exit 1
     fi
     echo Port $port refreshed on $(date). \
