@@ -115,7 +115,6 @@ while true; do
     export bind_port_response
     if [ "$(echo "$bind_port_response" | jq -r '.status')" != "OK" ]; then
       echo "The API did not return OK when trying to bind port"
-      read -p "Try again? [y/n] " -n 1 -r
       read -p "Try again? (Y/N): " TRY_AGAIN
       if [[ $TRY_AGAIN =~ ^[Yy]$ ]]; then
         echo "Trying again..."
